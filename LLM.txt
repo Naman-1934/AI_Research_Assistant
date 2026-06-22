@@ -1,0 +1,6 @@
+What is Langchain?
+LangChain is an open-source framework used to build applications powered by large language models (LLMs) like GPT-4, Claude, and Gemini.
+
+When to use Langchain?
+Use LangChain when building complex AI applications that require connecting Large Language Models (LLMs) to external data sources,
+ APIs, or multi-step reasoning processes.

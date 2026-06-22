@@ -1,0 +1,12 @@
+1. What is RAG?
+RAG (Retrieval-Augmented Generation) is an AI framework that improves the accuracy of Large Language Models (LLMs) by fetching facts 
+from external knowledge bases before generating a response
+
+2.  Meaning of RAG.
+Retrieval: When you ask a question, the AI converts your query into a mathematical format (vector embeddings) and searches your external 
+documents, company databases, or the web for the most semantically relevant information.
+Augmentation: The system takes the relevant text it just found and injects it alongside your original question into the AI's prompt.
+Generation: The language model reads the augmented prompt—using the retrieved facts as a reference—and generates a highly accurate, 
+context-aware answer.
+
+
