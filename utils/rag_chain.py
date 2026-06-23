@@ -51,3 +51,29 @@ Answer:
     response = llm.invoke(prompt)
 
     return response.content
+
+def generate_summary(llm, text):
+    prompt = """
+You are an expert research analyst.
+
+Create a detailed summary of the document.
+
+Include:
+
+1. Main Topic
+2. Key Findigs
+3. Important Concepts
+4. Methodology
+5. Limitations
+6. Future Scope
+
+Documents:
+
+{text}
+
+Summary:
+"""
+
+    response = llm.invoke(prompt)
+
+    return response.content
