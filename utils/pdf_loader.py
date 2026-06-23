@@ -7,7 +7,10 @@ def extract_text_from_Pdfs(pdf_docs):
         pdf_reader = PdfReader(pdf)
 
         for page in pdf_reader.pages:
-            text += page.extract_text()
+            page_text = page.extract_text()
+
+            if page_text:
+                text += page_text + "\n"
 
     return text
         

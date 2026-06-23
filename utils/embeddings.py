@@ -5,6 +5,6 @@ from sentence_transformers import SentenceTransformer
 def load_embedding_model():
 
     # all-MiniLM-L6-v2 is Fast, Free, Good semantic search and Widely used in RAG systems.
-    model = SentenceTransformer("all-miniLM-l6-v2")
+    model = SentenceTransformer("all-MiniLM-L6-v2")
 
     return model
