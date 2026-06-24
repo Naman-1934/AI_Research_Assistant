@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
+import google.generativeai as genai
 
 load_dotenv()
 
@@ -21,27 +22,52 @@ def get_llm():
 
     return llm
 
-def generate_answer(llm, context, question, chat_history):
+def generate_answer(llm, context, question, chat_history=None):
 
-    history_text = ""
+    """
+    Generate answer using Gemini
+    and retrieved document context.
+    """
+
+    try:
+
+        model = genai.GenerativeModel("gemini-2.5-flassh")
+
+        history_text = ""
+
+        if chat_history:
+            history_text = "\n".join(
+                {
+                    f"{msg["role"]}: {msg["content"]}"
+                    for msg in chat_history[-5:]
+                }
+            )
     
-    for msg in chat_history:
 
-        role = msg['role'].upper()
+        prompt = f"""
+You are an expert AI Research Assistant.
 
-        history_text += (f"{role}: {msg['content']}\n")
+Rules:
 
-    prompt = f"""
-You are an expert research assistant
+1. Answer ONLY from provided context.
 
-Use only the provided context to answer the question.
+2. If information is not available,
+   say:
+   "The uploaded documents do not containn enough information."
 
-If the answer is not in the context, say "I could not find this in the uploaded documents."
+3. Never make assumptions.
+
+4. Give clear and professional responses.
+
+5. When possible:
+   - Use bullet points
+   - Use sections
+   - Keep answers concise
 
 Conversation History:
 {history_text}
 
-Context:
+Document Context:
 {context}
 
 Question:
@@ -50,9 +76,12 @@ Question:
 Answer:
 """
 
-    response = llm.invoke(prompt)
+        response = model.generate_content(prompt)
 
-    return response.content
+        return response.text
+    
+    except Exception as e:
+        return(f"Error generating answer: {str(e)}")
 
 def generate_summary(llm, text):
     prompt = f"""

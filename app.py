@@ -8,6 +8,7 @@ from utils.text_splitter import split_text
 from utils.embeddings import load_embedding_model
 from utils.vector_stores import create_faiss_index, save_vector_store, load_vector_store
 from utils.rag_chain import get_llm, generate_answer, generate_summary
+from utils.retriever import retrieve_relevant_chunks
 
 
 # ──────────────────────────────────────────────
@@ -39,26 +40,22 @@ index, chunks = load_vector_store()
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+if "vector_store" not in st.session_state:
+    st.session_state.vector_store = None
+
 # ──────────────────────────────────────────────
 # SIDEBAR
 # ──────────────────────────────────────────────
 with st.sidebar:
     st.header("AI Research Assistant")
-    st.write("Powered by Gemini + FAISS")
+    # st.write("Powered by Gemini + FAISS")
 
-    # Show how many chunks are loaded so user knows DB status
-    if index is not None:
-        st.success(f"✅ Knowledge base loaded — {len(chunks)} chunks")
-    else:
-        st.warning("⚠️ No saved knowledge base found")
+    st.divider()
+
 
     if st.button("🗑️ Clear Chat"):
         st.session_state.messages = []
         st.rerun()
-
-    if st.button("🗄️ Delete Knowledge Base"):
-        if os.path.exists("vector_db"):
-            shutil.rmtree("vector_db")
 
         # Reset index and chunks so the rest of the app
         # Immediately knows there is no DB anymore
@@ -71,7 +68,7 @@ with st.sidebar:
 # Tells the user clearly what state the app is in.
 # ──────────────────────────────────────────────
 if index is not None:
-    st.info("📂 Knowledge base loaded. Ask questions below or upload new PDFs to replace it.")
+    st.info("Ask questions below or upload new PDFs to replace it.")
 else:
     st.write("Upload your PDFs below to get started.")
 
@@ -90,6 +87,8 @@ for messages in st.session_state.messages:
 # PDF UPLOAD
 # ──────────────────────────────────────────────
 uploaded_files = st.file_uploader("Upload PDFs", type="pdf", accept_multiple_files=True)
+
+
 
 
 # ──────────────────────────────────────────────
@@ -129,5 +128,92 @@ if uploaded_files:
 
         # FIX Bug 4: was mine="text/plain" — typo, silent failure
         # Corrected to mime="text/plain"
-        st.download_button(label="⬇️ Download Summary", )
+        st.download_button(label="⬇️ Download Summary", data=summary, filename="summary.txt", mime="text/plain")
+
+
+# ──────────────────────────────────────────────
+# Process User Question
+# This creates the chatbot input field at the bottom.
+# ──────────────────────────────────────────────
+user_question = st.chat_input("Ask a question about your documents...")
+
+if user_question:
+
+    # Save User Message
+    st.session_state.message.append(
+        {
+            "role": "user",
+            "content": user_question
+        }
+    )
+
+    with st.chat_message("user"):
+        st.markdown(user_question)
+
+    with st.chat_message("assistant"):
+        
+        with st.spinner("Searching documents..."):
+            
+            try:
+
+            # PDF contains:
+            # Chapter 1: Objective of Research, Chapter 2: Methodology, Chapter 3:Results,
+            # Question: "What is the objective?" and Retriever returns:
+            # [ "The objective of this research is..."]
+                relevant_results = retrieve_relevant_chunks(st.session_state.vector_store, user_question, top_k=3)
+
+                if not relevant_results:
+                    answer = (
+                        "I Couldn't find relevant information in the document."
+                    )
+
+                else:
+                    context = "\n\n".join(
+                        [
+                            item["content"]
+                            for item in relevant_results
+                        ]
+                    )
+
+                    # Question: What is the objective?
+                    # Context: Objective of the research is...
+                    answer = generate_answer(question=user_question, context=context, chat_history=st.session_state.messages)
+
+                    #  Where did you find this answer so, we will return chunk_id as a refernce
+                    sources = "\n".join(
+                        [
+                            f"sources chunk {item['chunk_id']}"
+                            for item in relevant_results
+                        ]
+                    )
+
+                    answer += (
+                        "\n\n --- \n\n"
+                        "**Sources Used:**\n\n"
+                        f"{sources}"
+                    )
+
+                    # The user sees: The primary objective of this research is to improve...
+                    st.markdown(answer)
+
+                    # User: What is the objective?
+                    # Assistant: The objective is...
+                    st.session_state.messages.append(
+                        {
+                            "role": "assistant",
+                            "content": answer
+                        }
+                    )
+
+            except Exception as e:
+                error_message = (f"error: {str(e)}")
+
+                st.error(error_message)
+
+                st.session_state.messages.append(
+                    {
+                        "role": "assistant",
+                        "content": error_message
+                    }
+                )
 
