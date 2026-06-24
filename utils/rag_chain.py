@@ -16,7 +16,7 @@ def get_llm():
     llm = ChatGoogleGenerativeAI(
         model = "gemini-2.5-flash",
         temperature = 0.3,
-        google_api_key = os.getenv("GOOGLE_API_KEY")
+        google_api_key = api_key    
     )
 
     return llm
@@ -34,7 +34,9 @@ def generate_answer(llm, context, question, chat_history):
     prompt = f"""
 You are an expert research assistant
 
-Use only provided context.
+Use only the provided context to answer the question.
+
+If the answer is not in the context, say "I could not find this in the uploaded documents."
 
 Conversation History:
 {history_text}
@@ -53,7 +55,7 @@ Answer:
     return response.content
 
 def generate_summary(llm, text):
-    prompt = """
+    prompt = f"""
 You are an expert research analyst.
 
 Create a detailed summary of the document.
@@ -63,9 +65,9 @@ Include:
 1. Main Topic
 2. Key Findigs
 3. Important Concepts
-4. Methodology
-5. Limitations
-6. Future Scope
+4. Methodology (if applicable)
+5. Limitations (if applicable)
+6. Future Scope (if applicable)
 
 Documents:
 

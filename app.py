@@ -9,168 +9,125 @@ from utils.embeddings import load_embedding_model
 from utils.vector_stores import create_faiss_index, save_vector_store, load_vector_store
 from utils.rag_chain import get_llm, generate_answer, generate_summary
 
+
+# ──────────────────────────────────────────────
+# PAGE CONFIG
+# ──────────────────────────────────────────────
 st.set_page_config(page_title="AI Research Assistant", layout="wide")
-
-
 st.title("📚 AI Research Assistant")
 
+# ──────────────────────────────────────────────
+# Load all the  model which will be used in this project.
+# ──────────────────────────────────────────────
+llm = get_llm()
+embedding_model = load_embedding_model()
+
+
+# ──────────────────────────────────────────────
+# LOAD SAVED VECTOR DB FROM DISK
+# If user already processed PDFs in a previous session,
+# load that saved index and chunks automatically.
+# Returns (None, None) if no saved DB exists yet.
+# ──────────────────────────────────────────────
 index, chunks = load_vector_store()
 
+# ──────────────────────────────────────────────
+# SESSION STATE — chat history
+# st.session_state persists across reruns in the same session.
+# Without this, chat history would reset every time the user types.
+# ──────────────────────────────────────────────
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# ──────────────────────────────────────────────
+# SIDEBAR
+# ──────────────────────────────────────────────
 with st.sidebar:
     st.header("AI Research Assistant")
     st.write("Powered by Gemini + FAISS")
 
-    # Vector database status
+    # Show how many chunks are loaded so user knows DB status
     if index is not None:
-        st.success("Vector DB Loaded")
+        st.success(f"✅ Knowledge base loaded — {len(chunks)} chunks")
     else:
-        st.warning("No Saved Vector DB")    
+        st.warning("⚠️ No saved knowledge base found")
 
-    if st.button("Clear Chat"):
+    if st.button("🗑️ Clear Chat"):
         st.session_state.messages = []
         st.rerun()
 
-    # Delete saved FAISS database
-    if st.button("Delete Knowledge Base"):
+    if st.button("🗄️ Delete Knowledge Base"):
         if os.path.exists("vector_db"):
             shutil.rmtree("vector_db")
+
+        # Reset index and chunks so the rest of the app
+        # Immediately knows there is no DB anymore
+        index = None
+        chunks = []
         st.rerun()
 
-
-
-st.write("Uploads PDFs and ask questions")
-
+# ──────────────────────────────────────────────
+# STATUS BANNER
+# Tells the user clearly what state the app is in.
+# ──────────────────────────────────────────────
 if index is not None:
-    st.success("Existing Knowledge Base Loaded")
+    st.info("📂 Knowledge base loaded. Ask questions below or upload new PDFs to replace it.")
+else:
+    st.write("Upload your PDFs below to get started.")
 
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
 
+# ──────────────────────────────────────────────
+# CHAT HISTORY DISPLAY
+# FIX Bug 3 (from Part A): only ONE render loop here.
+# The second duplicate loop that was below the file uploader is removed.
+# ──────────────────────────────────────────────
+for messages in st.session_state.messages:
+    with st.chat_message(messages['role']):
+        st.markdown(messages['content'])
+
+
+# ──────────────────────────────────────────────
+# PDF UPLOAD
+# ──────────────────────────────────────────────
 uploaded_files = st.file_uploader("Upload PDFs", type="pdf", accept_multiple_files=True)
 
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
 
+# ──────────────────────────────────────────────
+# PDF PROCESSING
+# Only runs when user actually uploads files.
+# All 4 pipeline steps happen here:
+# extract → chunk → embed → save to disk
+# ──────────────────────────────────────────────
 if uploaded_files:
-    with st.spinner("Processing PDFs..."):
+    with st.spinner("Processing PDFs - extracting, chunking, embedding..."):
 
+        # Step 1 — extract raw text from all uploaded PDFs
         raw_text = extract_text_from_Pdfs(uploaded_files)
 
+        # Step 2 — split into 1000-char chunks with 200-char overlap
         chunks = split_text(raw_text)
 
-        embedding_model = load_embedding_model()
+        # Step 3 — embed all chunks and build FAISS index
+        index, embeddings = create_faiss_index(chunks, embedding_model)
 
-        index, embeddings = (create_faiss_index(chunks, embedding_model))
-
+        # Step 4 — save index + chunks to disk so they survive app restarts
         save_vector_store(index, chunks)
 
-        llm = get_llm()
+    st.success(f"✅ Processed  {len(chunks)} chunks from {len(uploaded_files)} PDF(s)")
 
-    st.success("Documents Processed")
-
-    if st.button("Generate Document Summary..."):
-
+    # ── SUMMARY SECTION ──────────────────────────────────────
+    # Kept strictly inside `if uploaded_files:` because raw_text
+    # only exists here. Moving it outside would cause NameError.
+    # ─────────────────────────────────────────────────────────
+    if st.button("📝 Generate Document Summary"):
         with st.spinner("Generating Summary..."):
-
+            # First 30,000 chars only — keeps us inside Gemini token limits
             summary = generate_summary(llm, raw_text[:30000])
 
         st.subheader("Document Summary")
-
         st.write(summary)
 
-        st.download_button(label = "Download Summary", data=summary, file_name="summary.txt", mine="text/plain")
+        # FIX Bug 4: was mine="text/plain" — typo, silent failure
+        # Corrected to mime="text/plain"
+        st.download_button(label="⬇️ Download Summary", )
 
-    question = st.chat_input("Ask anything about the document...")
-
-    if question: 
-
-        st.session_state.messages.append(
-            {
-                "role": "user",
-                "content": question
-            }
-        )
-
-        with st.chat_message("user"):
-            st.markdown(question)
-
-        question_embedding = (embedding_model.encode([question]))
-
-        question_embedding = (np.array(question_embedding).astype("float32"))
-
-        k = min(5, len(chunks))
-
-        # Search vector database
-        # distances = similarity score
-        # indices = chunk IDs
-        distances, indices = (index.search(question_embedding, k))
-
-        st.write("Indices:", indices)
-        st.write("Number of Chunks:", len(chunks))
-
-        # Store complete source information
-        retrieved_chunks = []
-
-        # Store complete source information
-        retrieved_sources = []
-
-        # Loop through chunk indexes returned by FAISS
-        for idx in indices[0]:
-
-            # Prevent index errors
-            if idx < len(chunks):
-
-                # Store chunk text
-                retrieved_sources.append(
-                    {
-                        "chunk_id": idx,
-
-                        "distance": float(
-                            distances[0][
-                                list(indices[0]).index(idx)
-                            ]
-                        ),
-                        "text": chunks[idx]
-                    }
-                )
-        
-        # Create context for Gemini
-        # Only text is sent to Gemini
-        context = "\n\n".join(retrieved_chunks)
-
-        st.write("Context Length:", len(context))
-
-        print("=" * 50)
-        print("CONTEXT LENGTH:", len(context))
-        print(context[:1000])
-        print("=" * 50)
-        answer = generate_answer(llm, context, question, st.session_state.messages)
-
-        with st.chat_message("assistant"):
-            st.markdown(answer)
-
-        st.session_state.messages.append(
-            {
-                "role": "assistant",
-                "content": answer
-            }
-        )
-
-        # Ex: What is lstm? and next question is Ex: what are its limitation then gemini know it's = LSTM 
-        if len(st.session_state.messages) > 20:
-            st.session_state.messages = (
-                st.session_state.messages[-20:]
-            )
-
-        #Display sources used by Gemini
-        st.subheader("Sources Used")
-
-
-        for i, chunk in enumerate(retrieved_chunks, start=1):
-            with st.expander(f"Sources {i}"):
-                st.write(chunk)

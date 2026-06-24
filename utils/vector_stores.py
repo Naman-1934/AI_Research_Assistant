@@ -29,7 +29,7 @@ def save_vector_store(index, chunks):
 
     faiss.write_index(index, "vector_db/faiss.index")
 
-    with open("vector_db/chunks.pickle", "wb") as f:
+    with open("vector_db/chunks.pkl", "wb") as f:
         pickle.dump(chunks, f)
 
 
