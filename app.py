@@ -23,8 +23,16 @@ st.caption("Ask questions, generate summaries, and explores research papers usin
 # ──────────────────────────────────────────────
 # Load all the  model which will be used in this project.
 # ──────────────────────────────────────────────
-llm = get_llm()
-embedding_model = load_embedding_model()
+@st.cache_resource
+def load_llm():
+    return get_llm()
+
+@st.cache_resource
+def load_embeddings():
+    return load_embedding_model()
+
+llm = load_llm()
+embedding_model = load_embeddings()
 
 
 # ──────────────────────────────────────────────
@@ -105,7 +113,7 @@ if st.button("Reset Project"):
 # STATUS BANNER
 # Tells the user clearly what state the app is in.
 # ──────────────────────────────────────────────
-    st.markdown("""
+st.markdown("""
 Welcome to AI Research Assistant
                 
 This web application allows you to:
@@ -136,10 +144,17 @@ for messages in st.session_state.messages:
 # ──────────────────────────────────────────────
 # PDF UPLOAD
 # ──────────────────────────────────────────────
-uploaded_file = st.file_uploader("📄 Upload Research Paper (PDF)", type="pdf", accept_multiple_files=False)
+uploaded_file = st.file_uploader("📄 Upload Research Paper (PDF)", type="pdf", accept_multiple_files=False, help="Upload one research paper in PDF format.")
 
-if uploaded_file:
+if uploaded_file is not None:
     st.success(f"📄 Selected File: {uploaded_file.name} ")
+
+    process_pdf = st.button(
+        "🚀 Process Research Paper",
+        use_container_width=True
+    )
+else:
+    process_pdf=False
 
 
 # ──────────────────────────────────────────────
@@ -148,7 +163,7 @@ if uploaded_file:
 # All 4 pipeline steps happen here:
 # extract → chunk → embed → save to disk
 # ──────────────────────────────────────────────
-if validate_uploaded_files(uploaded_file):
+if process_pdf:
     with st.spinner("📄 Processing research paper..."):
 
         # Step 1 — extract raw text from all uploaded PDFs
