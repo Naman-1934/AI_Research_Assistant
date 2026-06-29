@@ -41,9 +41,8 @@ embedding_model = load_embeddings()
 # load that saved index and chunks automatically.
 # Returns (None, None) if no saved DB exists yet.
 # ──────────────────────────────────────────────
-index, chunks = load_vector_store()
-if  index is not None:
-    st.session_state.vector_store = index
+index = None
+chunks = []
 
 # ──────────────────────────────────────────────
 # SESSION STATE — chat history
@@ -66,19 +65,11 @@ with st.sidebar:
         # Clear chat 
         st.session_state.messages = []
 
-        # Remove current vector store
-        st.session_state.vector_store = None
-
-        # Change uploader key 
-        st.session_state.uploader_key += 1
-
-        # Clear local variable
-        index = None
-        chunks = []
-
         # Delete saved FAISS database
         if os.path.exists("vector_db"):
             shutil.rmtree("vector_db")
+
+        st.session_state.vector_store = None
 
         st.success("Started a new conversation.")
         st.rerun()
@@ -147,14 +138,14 @@ for messages in st.session_state.messages:
 uploaded_file = st.file_uploader("📄 Upload Research Paper (PDF)", type="pdf", accept_multiple_files=False, help="Upload one research paper in PDF format.")
 
 if uploaded_file is not None:
-    st.success(f"📄 Selected File: {uploaded_file.name} ")
+    st.info(f"📄 Selected File: {uploaded_file.name} ")
 
     process_pdf = st.button(
         "🚀 Process Research Paper",
         use_container_width=True
     )
 else:
-    process_pdf=False
+    process_pdf = False
 
 
 # ──────────────────────────────────────────────
@@ -204,7 +195,6 @@ if process_pdf:
 
         # Step 3 — embed all chunks and build FAISS index
         index, vector_store = create_faiss_index(chunks, embedding_model)
-        st.session_state.vector_store = vector_store
 
         # Step 4 — save index + chunks to disk so they survive app restarts
         save_vector_store(index, chunks)
