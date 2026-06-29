@@ -35,7 +35,7 @@ embedding_model = load_embedding_model()
 # ──────────────────────────────────────────────
 index, chunks = load_vector_store()
 if  index is not None:
-    st.session_state.vector_store = load_vector_store()
+    st.session_state.vector_store = index
 
 # ──────────────────────────────────────────────
 # SESSION STATE — chat history
@@ -70,7 +70,7 @@ with st.sidebar:
 
         # Delete saved FAISS database
         if os.path.exists("vector_db"):
-            shutil.rmtree()
+            shutil.rmtree("vector_db")
 
         st.success("Started a new conversation.")
         st.rerun()
@@ -105,9 +105,6 @@ if st.button("Reset Project"):
 # STATUS BANNER
 # Tells the user clearly what state the app is in.
 # ──────────────────────────────────────────────
-if index is not None:
-    st.success("✅ Research paper processed successfully.")
-else:
     st.markdown("""
 Welcome to AI Research Assistant
                 
@@ -151,9 +148,6 @@ if uploaded_file:
 # All 4 pipeline steps happen here:
 # extract → chunk → embed → save to disk
 # ──────────────────────────────────────────────
-
-
-
 if validate_uploaded_files(uploaded_file):
     with st.spinner("📄 Processing research paper..."):
 
@@ -200,7 +194,10 @@ if validate_uploaded_files(uploaded_file):
         # Step 4 — save index + chunks to disk so they survive app restarts
         save_vector_store(index, chunks)
 
-    st.success(f"✅ Processed.")
+        st.session_state.vector_store = index
+
+        st.success("✅ Research paper processed successfully.")
+
 
     # ── SUMMARY SECTION ──────────────────────────────────────
     # Kept strictly inside `if uploaded_files:` because raw_text
