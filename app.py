@@ -285,14 +285,13 @@ if (validate_question(user_question) and validate_vector_store(st.session_state.
                     )
 
             except Exception as e:
-                error_message = (f"error: {str(e)}")
-
-                st.error(error_message)
+                print(e)
+                st.error("❌ Something went wrong while processing your request.")
 
                 st.session_state.messages.append(
                     {
                         "role": "assistant",
-                        "content": error_message
+                        "content": "❌ Something went wrong while processing your request."
                     }
                 )
 
