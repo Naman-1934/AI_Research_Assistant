@@ -8,6 +8,7 @@ load_dotenv()
 def get_llm():
 
     api_key = os.getenv("GOOGLE_API_KEY")
+    genai.configure(api_key=api_key)
 
     if not api_key:
         raise ValueError(
@@ -31,16 +32,16 @@ def generate_answer(llm, context, question, chat_history=None):
 
     try:
 
-        model = genai.GenerativeModel("gemini-2.5-flassh")
+        model = genai.GenerativeModel("gemini-2.5-flash")
 
         history_text = ""
 
         if chat_history:
             history_text = "\n".join(
-                {
-                    f"{msg["role"]}: {msg["content"]}"
+                [
+                    f"{msg['role']}: {msg['content']}"
                     for msg in chat_history[-5:]
-                }
+                ]
             )
     
 
@@ -91,15 +92,23 @@ Create a detailed summary of the document.
 
 Include:
 
-1. Main Topic
-2. Key Findigs
-3. Important Concepts
-4. Methodology (if applicable)
-5. Limitations (if applicable)
-6. Future Scope (if applicable)
+1. Title (if available)
+2. Objective
+3. Problem Statement
+4. Methodology
+5. Dataset (if mentioned)
+6. Proposed Model/Approach
+7. Key Findings
+8. Results
+9. Advantages
+10. Limitations
+11. Future Scope
+12. Conclusion
 
-Documents:
+if any section is not available in the document, write:
+"not mentioned in the paper".
 
+Research Paper:
 {text}
 
 Summary:
