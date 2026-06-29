@@ -7,7 +7,7 @@ load_dotenv()
 
 def get_llm():
 
-    api_key = os.getenv("GOOGLE_API_KEY")
+    api_key = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY"))
     genai.configure(api_key=api_key)
 
     if not api_key:
