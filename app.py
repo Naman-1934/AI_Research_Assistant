@@ -248,18 +248,21 @@ if uploaded_file is not None:
     if st.session_state.processed:
         st.success(f"✅ Active Document: {st.session_state.processed_file}")
     if st.button("📝 Generate Document Summary"):
-        with st.spinner("📝 Generate Research Paper Summary"):
-            # First 30,000 chars only — keeps us inside Gemini token limits
-            st.write("Here is the summary of the paper...")
-            summary = generate_summary(llm, raw_text[:85000])
+        if st.spinner("Generating summary..."):
 
-        st.subheader("📑 Research Paper Summary")
-        st.write(summary)
+            with st.spinner("📝 Generate Research Paper Summary"):
+                # First 30,000 chars only — keeps us inside Gemini token limits
+                st.write("Here is the summary of the paper...")
+                summary = generate_summary(llm, st.session_state.raw_text_for_summary[:85000])
 
-        # FIX Bug 4: was mine="text/plain" — typo, silent failure
-        # Corrected to mime="text/plain"
-        st.download_button(label=" Download Summary", data=summary, file_name="summary.txt", mime="text/plain")
+            st.subheader("📑 Research Paper Summary")
+            st.write(summary)
 
+            # FIX Bug 4: was mine="text/plain" — typo, silent failure
+            # Corrected to mime="text/plain"
+            st.download_button(label=" Download Summary", data=summary, file_name="summary.txt", mime="text/plain")
+        else:
+            st.error("Please upload and process a document first.")
 
 # ──────────────────────────────────────────────
 # Process User Question
