@@ -221,14 +221,16 @@ if uploaded_file is not None:
                 # Step 4 — save index + chunks to disk so they survive app restarts
                 save_vector_store(faiss_index, chunks)
 
-                st.session_state.faiss_index = faiss_index
-                st.session_state.chunks = chunks
-                st.session_state.vector_store = faiss_index
+                st.session_state["faiss_index"] = faiss_index
+                st.session_state["chunks"] = chunks
+                st.session_state["vector_store"] = faiss_index
+                st.session_state["raw_text_for_summary"] = raw_text
+
                 st.session_state.raw_text_for_summary = raw_text
 
                 # Mark this specific file as processed and save text for summary
-                st.session_state.processed = True
-                st.session_state.processed_file_name = uploaded_file.name
+                st.session_state["processed"] = True
+                st.session_state["processed_file_name"] = uploaded_file.name
 
                 st.success("✅ Research paper processed successfully.")
 
@@ -253,7 +255,13 @@ if uploaded_file is not None:
             with st.spinner("📝 Generate Research Paper Summary"):
                 # First 30,000 chars only — keeps us inside Gemini token limits
                 st.write("Here is the summary of the paper...")
-                summary = generate_summary(llm, st.session_state.raw_text_for_summary[:85000])
+
+                raw_text  = st.session_state.get("raw_text_for_summary")
+
+                if raw_text:
+                    summary = generate_summary(llm, st.session_state.raw_text_for_summary[:85000])
+                else:
+                    st.error("❌ Document text not found. Please try re-uploading your PDF to process it.")
 
             st.subheader("📑 Research Paper Summary")
             st.write(summary)
