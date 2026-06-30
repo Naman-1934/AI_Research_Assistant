@@ -264,8 +264,9 @@ if uploaded_file is not None:
                 else:
                     st.error("❌ Document text not found. Please try re-uploading your PDF to process it.")
 
-            st.subheader("📑 Research Paper Summary")
-            st.write(st.session_state.generated_summary)
+            if st.session_state.generated_summary is not None:
+                st.write("### Paper Summary")
+                st.write(st.session_state.generated_summary)
 
             # FIX Bug 4: was mine="text/plain" — typo, silent failure
             # Corrected to mime="text/plain"
