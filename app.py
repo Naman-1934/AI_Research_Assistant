@@ -61,6 +61,9 @@ if "chunks" not in st.session_state:
 if "uploader_reset" not in st.session_state:
     st.session_state.uploader_reset = 0
 
+if "generated_summary" not in st.session_state:
+    st.session_state.generated_summary = None
+
 # ──────────────────────────────────────────────
 # SIDEBAR
 # New Chat
@@ -74,8 +77,6 @@ with st.sidebar:
         # Delete saved FAISS database
         if os.path.exists("vector_db"):
             shutil.rmtree("vector_db")
-
-        st.session_state.vector_store = None
 
         st.session_state.faiss_index = None
 
@@ -101,7 +102,6 @@ with st.sidebar:
 # ──────────────────────────────────────────────
 if st.button("Reset Project"):
     st.session_state.messages = []
-    st.session_state.vector_store = None
     st.session_state.faiss_index = None
     st.session_state.chunks = []
     st.session_state.uploader_reset += 1
@@ -253,15 +253,14 @@ if uploaded_file is not None:
             st.error("❌ Document text not found. Please try re-uploading your PDF to process it.")
         else:   
             with st.spinner("Generating summary..."):
-                summary = generate_summary(llm, raw_text)
-                st.session_state.generated_summary = summary
+                st.session_state.generated_summary = generate_summary(llm, raw_text)
 
             st.subheader("📑 Research Paper Summary")
-            st.write(summary)
+            st.write(st.session_state.generated_summary)
 
             # FIX Bug 4: was mine="text/plain" — typo, silent failure
             # Corrected to mime="text/plain"
-            st.download_button(label="Download Summary", data=summary, file_name="summary.txt", mime="text/plain")
+            st.download_button(label="Download Summary", data=st.session_state.generated_summary, file_name="summary.txt", mime="text/plain")
         
 
 # ──────────────────────────────────────────────
@@ -271,7 +270,7 @@ if uploaded_file is not None:
 user_question = st.chat_input("💬 Ask anything about from the  uploaded research paper...")
 
 if user_question:
-    if st.session_state.vector_store is None:
+    if st.session_state.faiss_index is None:
         st.warning("Please upload and process a research paper first.")
     elif len(user_question.strip()) == 0:
         st.warning("Please enter a valid question.")
