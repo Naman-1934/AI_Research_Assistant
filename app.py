@@ -153,16 +153,8 @@ for messages in st.session_state.messages:
 uploaded_file = st.file_uploader(
     "📄 Upload Research Paper (PDF)", 
     type="pdf",
-    accept_multiple_files=False, 
-    help="Upload one research paper in PDF format.",
-    key = f"uploader_{st.session_state.uploader_reset}"
+    accept_multiple_files=False
     )
-
-if uploaded_file is not None:
-    st.info(f"📄 Selected File: {uploaded_file.name} ")
-
-if uploaded_file is not None and st.session_state.vector_store is None:
-    with st.spinner("📄 Processing research paper...")
 
 
 # ──────────────────────────────────────────────
@@ -171,9 +163,12 @@ if uploaded_file is not None and st.session_state.vector_store is None:
 # All 4 pipeline steps happen here:
 # extract → chunk → embed → save to disk
 # ──────────────────────────────────────────────
-if uploaded_file:
-    with st.spinner("📄 Processing research paper..."):
+if uploaded_file is not None:
 
+     # We check session_state to ensure we only process the file once.
+    if "processes_file_name" not in st.session_state or st.session_state.processed_file_name != uploaded_file.name
+
+    with st.spinner("📄 Processing research paper..."):
         # Step 1 — extract raw text from all uploaded PDFs
         raw_text = extract_text_from_Pdfs([uploaded_file])
 
@@ -218,7 +213,11 @@ if uploaded_file:
 
         st.session_state.faiss_index = faiss_index
         st.session_state.chunks = chunks
-        st.session_state.vector_store = index
+        st.session_state.vector_store = faiss_index
+
+        # Mark this specific file as processed and save text for summary
+        st.session_state.processed_file_name = uploaded_file.name
+        st.session_state.raw_text_for_summary = raw_text
 
         st.success("✅ Research paper processed successfully.")
 
@@ -230,6 +229,7 @@ if uploaded_file:
     if st.button("📝 Generate Document Summary"):
         with st.spinner("📝 Generate Research Paper Summary"):
             # First 30,000 chars only — keeps us inside Gemini token limits
+            st.write("Here is the summary of the paper...")
             summary = generate_summary(llm, raw_text[:85000])
 
         st.subheader("📑 Research Paper Summary")
