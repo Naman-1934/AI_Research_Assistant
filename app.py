@@ -169,7 +169,7 @@ if uploaded_file is not None:
 
     
      # We check session_state to ensure we only process the file once.
-    if (not st.session_state.processed or st.session_state.get("Processed_file_name") != uploaded_file.name):
+    if (not st.session_state.processed or st.session_state.get("processed_file_name") != uploaded_file.name):
 
         with st.spinner("📄 Processing research paper..."):
             try:
@@ -221,8 +221,6 @@ if uploaded_file is not None:
                 # st.session_state["vector_store"] = faiss_index
                 st.session_state["raw_text_for_summary"] = raw_text
 
-                st.session_state["raw_text_for_summary"] = raw_text
-
                 # Mark this specific file as processed and save text for summary
                 st.session_state["processed"] = True
                 st.session_state["processed_file_name"] = uploaded_file.name
@@ -243,7 +241,7 @@ if uploaded_file is not None:
     # ─────────────────────────────────────────────────────────
     # 4. Display Status and Actions only after processing succeeds
     if st.session_state.processed:
-        st.success(f"✅ Active Document: {st.session_state["processed_file_name"]}")
+        st.success(f"✅ Active Document: {st.session_state['processed_file_name']}")
     if st.button("📝 Generate Document Summary"):
         # First 30,000 chars only — keeps us inside Gemini token limits
         st.write("Here is the summary of the paper...")
@@ -255,12 +253,13 @@ if uploaded_file is not None:
             with st.spinner("Generating summary..."):
                 st.session_state.generated_summary = generate_summary(llm, raw_text)
 
-            st.subheader("📑 Research Paper Summary")
-            st.write(st.session_state.generated_summary)
+    if st.session_state.generated_summary is not None:
+        st.subheader("📑 Research Paper Summary")
+        st.write(st.session_state.generated_summary)
 
-            # FIX Bug 4: was mine="text/plain" — typo, silent failure
-            # Corrected to mime="text/plain"
-            st.download_button(label="Download Summary", data=st.session_state.generated_summary, file_name="summary.txt", mime="text/plain")
+        # FIX Bug 4: was mine="text/plain" — typo, silent failure
+        # Corrected to mime="text/plain"
+        st.download_button(label="⬇ Download Summary", data=st.session_state.generated_summary, file_name="summary.txt", mime="text/plain")
         
 
 # ──────────────────────────────────────────────
@@ -323,13 +322,12 @@ if user_question:
                         )
 
                 except Exception as e:
-                    print(e)
-                    st.error("❌ Something went wrong while processing your request.")
+                    st.exception(e)
 
                     st.session_state.messages.append(
                         {
                             "role": "assistant",
-                            "content": "❌ Something went wrong while processing your request."
+                            "content": "❌ {e}."
                         }
                     )
 
