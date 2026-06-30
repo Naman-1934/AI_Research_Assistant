@@ -161,12 +161,8 @@ uploaded_file = st.file_uploader(
 if uploaded_file is not None:
     st.info(f"📄 Selected File: {uploaded_file.name} ")
 
-    process_pdf = st.button(
-        "🚀 Process Research Paper",
-        use_container_width=True
-    )
-else:
-    process_pdf = False
+if uploaded_file is not None and st.session_state.vector_store is None:
+    with st.spinner("📄 Processing research paper...")
 
 
 # ──────────────────────────────────────────────
@@ -175,7 +171,7 @@ else:
 # All 4 pipeline steps happen here:
 # extract → chunk → embed → save to disk
 # ──────────────────────────────────────────────
-if process_pdf:
+if uploaded_file:
     with st.spinner("📄 Processing research paper..."):
 
         # Step 1 — extract raw text from all uploaded PDFs
@@ -250,78 +246,70 @@ if process_pdf:
 # ──────────────────────────────────────────────
 user_question = st.chat_input("💬 Ask anything about from the  uploaded research paper...")
 
-if (validate_question(user_question) and validate_vector_store(st.session_state.vector_store)):
+if user_question and user_question.strip():
+    if st.session_state.vector_store is None:
+        st.warning("Please upload and process a research paper first.")
+    elif len(user_question.strip()) == 0:
+        st.warning("Please enter a valid question.")
+    else:
 
-    # Save User Message
-    st.session_state.messages.append(
-        {
-            "role": "user",
-            "content": user_question
-        }
-    )
+        # Save User Message
+        st.session_state.messages.append(
+            {
+                "role": "user",
+                "content": user_question
+            }
+        )
 
-    with st.chat_message("user"):
-        st.markdown(user_question)
+        with st.chat_message("user"):
+            st.markdown(user_question)
 
-    with st.chat_message("assistant"):
-        
-        with st.spinner("Searching documents..."):
-            
-            try:
+        with st.chat_message("assistant"):
 
-            # PDF contains:
-            # Chapter 1: Objective of Research, Chapter 2: Methodology, Chapter 3:Results,
-            # Question: "What is the objective?" and Retriever returns:
-            # [ "The objective of this research is..."]
-                faiss_index = st.session_state.faiss_index
-                chunks = st.session_state.chunks
-                relevant_results = retrieve_relevant_chunks(index, chunks, user_question, top_k=5)
+            with st.spinner("Searching documents..."):
 
-                if not relevant_results:
-                    answer = (
-                        "I Couldn't find relevant information in the document."
-                    )
+                try:
+                    faiss_index = st.session_state.faiss_index
+                    chunks = st.session_state.chunks
+                    relevant_results = retrieve_relevant_chunks(faiss_index, chunks, user_question, top_k=5)
 
-                else:
+                    if not relevant_results:
+                        answer = (
+                            "I Couldn't find relevant information in the document."
+                        )
 
-                    context = "\n\n".join(
-                        [
-                            item["content"]
-                            for item in relevant_results
-                        ]
-                    )
+                    else:
 
-                    # Question: What is the objective?
-                    # Context: Objective of the research is...
-                    answer = generate_answer(llm = llm, question=user_question, context=context, chat_history=st.session_state.messages)
+                        context = "\n\n".join(
+                            [
+                                item["content"]
+                                for item in relevant_results
+                            ]
+                        )
 
-                    #  Where did you find this answer so, we will return chunk_id as a refernce
-                   
+                        answer = generate_answer(llm=llm, question=user_question, context=context, chat_history=st.session_state.messages)
 
-                    # The user sees: The primary objective of this research is to improve...
-                    st.subheader("🤖 AI Answer")
-                    st.markdown(answer)
+                        st.subheader("🤖 AI Answer")
+                        st.markdown(answer)
 
-                    # User: What is the objective?
-                    # Assistant: The objective is...
+                        st.session_state.messages.append(
+                            {
+                                "role": "assistant",
+                                "content": answer
+                            }
+                        )
+
+                except Exception as e:
+                    print(e)
+                    st.error("❌ Something went wrong while processing your request.")
+
                     st.session_state.messages.append(
                         {
                             "role": "assistant",
-                            "content": answer
+                            "content": "❌ Something went wrong while processing your request."
                         }
                     )
 
-            except Exception as e:
-                print(e)
-                st.error("❌ Something went wrong while processing your request.")
-
-                st.session_state.messages.append(
-                    {
-                        "role": "assistant",
-                        "content": "❌ Something went wrong while processing your request."
-                    }
-                )
-
-                st.divider()
-                st.caption("© 2026 AI Research Assistant | Built with Streamlit • FAISS • Gemini")
+st.divider()
+st.caption("© 2026 AI Research Assistant | Built with Streamlit • FAISS • Gemini")
 
