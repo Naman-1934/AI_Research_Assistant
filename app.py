@@ -259,16 +259,17 @@ if uploaded_file is not None:
                 raw_text  = st.session_state.get("raw_text_for_summary")
 
                 if raw_text:
-                    summary = generate_summary(llm, st.session_state.raw_text_for_summary[:85000])
+                    with st.spinner("Generating summary..."):
+                        st.session_state.generated_summary = generate_summary(llm, st.session_state.raw_text[:85000])
                 else:
                     st.error("❌ Document text not found. Please try re-uploading your PDF to process it.")
 
             st.subheader("📑 Research Paper Summary")
-            st.write(summary)
+            st.write(st.session_state.generated_summary)
 
             # FIX Bug 4: was mine="text/plain" — typo, silent failure
             # Corrected to mime="text/plain"
-            st.download_button(label=" Download Summary", data=summary, file_name="summary.txt", mime="text/plain")
+            st.download_button(label=" Download Summary", data=st.session_state.generated_summary , file_name="summary.txt", mime="text/plain")
         else:
             st.error("Please upload and process a document first.")
 
