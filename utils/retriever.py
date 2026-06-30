@@ -22,6 +22,11 @@ def retrieve_relevant_chunks(index, chunks, question, top_k=3):
         )
 
         results = []
+        print("Distances:", distances)
+        print("Indices:", indices)
+        print("Distances shape:", distances.shape)
+        print("Indices shape:", indices.shape)
+        print("Chunks length:", len(chunks))
 
         for i, idx in enumerate(indices[0]):
 
