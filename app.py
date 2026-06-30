@@ -150,6 +150,11 @@ for messages in st.session_state.messages:
 # ──────────────────────────────────────────────
 # PDF UPLOAD
 # ──────────────────────────────────────────────
+if "processed" not in st.session_state:
+    st.session_state.processed = False
+if "processed_file" not in st.session_state:
+    st.session_state.processed_file = None
+
 uploaded_file = st.file_uploader(
     "📄 Upload Research Paper (PDF)", 
     type="pdf",
@@ -165,8 +170,11 @@ uploaded_file = st.file_uploader(
 # ──────────────────────────────────────────────
 if uploaded_file is not None:
 
+    st.session_state.processed = False
+    st.session_state.processed_file = None
+
      # We check session_state to ensure we only process the file once.
-    if "processed_file_name" not in st.session_state or st.session_state.processed_file_name != uploaded_file.name:
+    if uploaded_file and not st.session_state.processed != uploaded_file.name:
 
         with st.spinner("📄 Processing research paper..."):
             try:
@@ -216,10 +224,11 @@ if uploaded_file is not None:
                 st.session_state.faiss_index = faiss_index
                 st.session_state.chunks = chunks
                 st.session_state.vector_store = faiss_index
+                st.session_state.raw_text_for_summary = raw_text
 
                 # Mark this specific file as processed and save text for summary
+                st.session_state.processed = True
                 st.session_state.processed_file_name = uploaded_file.name
-                st.session_state.raw_text_for_summary = raw_text
 
                 st.success("✅ Research paper processed successfully.")
 
@@ -227,12 +236,17 @@ if uploaded_file is not None:
                 st.error("❌ An error occurred during processing:")
                 st.exception(e)
     
+  
+
 
 
     # ── SUMMARY SECTION ──────────────────────────────────────
     # Kept strictly inside `if uploaded_files:` because raw_text
     # only exists here. Moving it outside would cause NameError.
     # ─────────────────────────────────────────────────────────
+    # 4. Display Status and Actions only after processing succeeds
+    if st.session_state.processed:
+        st.success(f"✅ Active Document: {st.session_state.processed_file}")
     if st.button("📝 Generate Document Summary"):
         with st.spinner("📝 Generate Research Paper Summary"):
             # First 30,000 chars only — keeps us inside Gemini token limits
@@ -253,7 +267,7 @@ if uploaded_file is not None:
 # ──────────────────────────────────────────────
 user_question = st.chat_input("💬 Ask anything about from the  uploaded research paper...")
 
-if user_question and user_question.strip():
+if user_question:
     if st.session_state.vector_store is None:
         st.warning("Please upload and process a research paper first.")
     elif len(user_question.strip()) == 0:
