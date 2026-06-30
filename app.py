@@ -36,22 +36,6 @@ embedding_model = load_embeddings()
 
 
 # ──────────────────────────────────────────────
-# LOAD SAVED VECTOR DB FROM DISK
-# If user already processed PDFs in a previous session,
-# load that saved index and chunks automatically.
-# Returns (None, None) if no saved DB exists yet.
-# ──────────────────────────────────────────────
-if st.session_state.faiss_index is None:
-
-    index, chunks = load_vector_store()
-
-    if index is not None:
-
-        st.session_state.faiss_index = index
-        st.session_state.chunks = chunks
-
-
-# ──────────────────────────────────────────────
 # SESSION STATE — chat history
 # st.session_state persists across reruns in the same session.
 # Without this, chat history would reset every time the user types.
@@ -70,6 +54,21 @@ if "uploader_reset" not in st.session_state:
 
 if "generated_summary" not in st.session_state:
     st.session_state.generated_summary = None
+
+# ──────────────────────────────────────────────
+# LOAD SAVED VECTOR DB FROM DISK
+# If user already processed PDFs in a previous session,
+# load that saved index and chunks automatically.
+# Returns (None, None) if no saved DB exists yet.
+# ──────────────────────────────────────────────
+if st.session_state.faiss_index is None:
+
+    index, chunks = load_vector_store()
+
+    if index is not None:
+
+        st.session_state.faiss_index = index
+        st.session_state.chunks = chunks
 
 # ──────────────────────────────────────────────
 # SIDEBAR
