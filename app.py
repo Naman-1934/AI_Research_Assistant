@@ -180,7 +180,7 @@ if uploaded_file is not None:
             try:
 
                 # Step 1 — extract raw text from all uploaded PDFs
-                raw_text = extract_text_from_Pdfs([uploaded_file])
+                raw_text = extract_text_from_Pdfs(uploaded_file)
 
                 # ------------------------------------
                 # Validate uploaded document
@@ -251,7 +251,7 @@ if uploaded_file is not None:
         with st.spinner("📝 Generate Research Paper Summary"):
             # First 30,000 chars only — keeps us inside Gemini token limits
             st.write("Here is the summary of the paper...")
-            summary = generate_summary(llm, raw_text[:100000])
+            summary = generate_summary(llm, raw_text[:85000])
 
         st.subheader("📑 Research Paper Summary")
         st.write(summary)
