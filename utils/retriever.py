@@ -22,13 +22,13 @@ def retrieve_relevant_chunks(index, chunks, question, top_k=3):
         results = []
 
         # FAISS returns positions.Ex: [8, 15, 22], We convert those positions back into actual text chunks.
-        for idx in indices[0]:
+        for idx in enumerate(indices[0]):
             if idx != -1:
-                results.append(
+                results.append({
                     "content": chunks[idx],
                     "chunk_id": int(idx),
-                    :"score": float(distances[0][1])
-                    )
+                    "score": float(distances[0][1])
+                    })
         return results
     
     except Exception as e:
