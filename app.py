@@ -41,8 +41,15 @@ embedding_model = load_embeddings()
 # load that saved index and chunks automatically.
 # Returns (None, None) if no saved DB exists yet.
 # ──────────────────────────────────────────────
-index = None
-chunks = []
+if st.session_state.faiss_index is None:
+
+    index, chunks = load_vector_store()
+
+    if index is not None:
+
+        st.session_state.faiss_index = index
+        st.session_state.chunks = chunks
+
 
 # ──────────────────────────────────────────────
 # SESSION STATE — chat history
@@ -79,8 +86,11 @@ with st.sidebar:
             shutil.rmtree("vector_db")
 
         st.session_state.faiss_index = None
-
         st.session_state.chunks = []
+        st.session_state.generated_summary = None
+        st.session_state.processed = False
+        st.session_state.processed_file_name = None
+        st.session_state.raw_text_for_summary = None
 
         st.session_state.uploader_reset += 1
 
@@ -104,6 +114,11 @@ if st.button("Reset Project"):
     st.session_state.messages = []
     st.session_state.faiss_index = None
     st.session_state.chunks = []
+    st.session_state.generated_summary = None
+    st.session_state.processed = False
+    st.session_state.processed_file_name = None
+    st.session_state.raw_text_for_summary = None
+
     st.session_state.uploader_reset += 1
 
     # Delete saved FAISS files
@@ -166,7 +181,6 @@ uploaded_file = st.file_uploader(
 # extract → chunk → embed → save to disk
 # ──────────────────────────────────────────────
 if uploaded_file is not None:
-
     
      # We check session_state to ensure we only process the file once.
     if (not st.session_state.processed or st.session_state.get("processed_file_name") != uploaded_file.name):
@@ -240,26 +254,26 @@ if uploaded_file is not None:
     # only exists here. Moving it outside would cause NameError.
     # ─────────────────────────────────────────────────────────
     # 4. Display Status and Actions only after processing succeeds
-    if st.session_state.processed:
-        st.success(f"✅ Active Document: {st.session_state['processed_file_name']}")
-    if st.button("📝 Generate Document Summary"):
-        # First 30,000 chars only — keeps us inside Gemini token limits
-        st.write("Here is the summary of the paper...")
-        raw_text = st.session_state.get("raw_text_for_summary")
+if st.session_state.processed:
+    st.success(f"✅ Active Document: {st.session_state['processed_file_name']}")
+if st.button("📝 Generate Document Summary"):
+    # First 30,000 chars only — keeps us inside Gemini token limits
+    st.write("Here is the summary of the paper...")
+    raw_text = st.session_state.get("raw_text_for_summary")
 
-        if raw_text is None:
-            st.error("❌ Document text not found. Please try re-uploading your PDF to process it.")
-        else:   
-            with st.spinner("Generating summary..."):
-                st.session_state.generated_summary = generate_summary(llm, raw_text)
+    if raw_text is None:
+        st.error("❌ Document text not found. Please try re-uploading your PDF to process it.")
+    else:   
+        with st.spinner("Generating summary..."):
+            st.session_state.generated_summary = generate_summary(llm, raw_text)
 
-    if st.session_state.generated_summary is not None:
-        st.subheader("📑 Research Paper Summary")
-        st.write(st.session_state.generated_summary)
+if st.session_state.generated_summary is not None:
+    st.subheader("📑 Research Paper Summary")
+    st.write(st.session_state.generated_summary)
 
-        # FIX Bug 4: was mine="text/plain" — typo, silent failure
-        # Corrected to mime="text/plain"
-        st.download_button(label="⬇ Download Summary", data=st.session_state.generated_summary, file_name="summary.txt", mime="text/plain")
+    # FIX Bug 4: was mine="text/plain" — typo, silent failure
+    # Corrected to mime="text/plain"
+    st.download_button(label="⬇ Download Summary", data=st.session_state.generated_summary, file_name="summary.txt", mime="text/plain")
         
 
 # ──────────────────────────────────────────────
@@ -322,12 +336,13 @@ if user_question:
                         )
 
                 except Exception as e:
-                    st.exception(e)
+                    print(e)
+                    st.error("❌ Something went wrong while processing your request.")
 
                     st.session_state.messages.append(
                         {
                             "role": "assistant",
-                            "content": "❌ {e}."
+                            "content": "❌ Something went wrong while processing your request."
                         }
                     )
 
