@@ -251,7 +251,7 @@ if uploaded_file is not None:
         with st.spinner("📝 Generate Research Paper Summary"):
             # First 30,000 chars only — keeps us inside Gemini token limits
             st.write("Here is the summary of the paper...")
-            summary = generate_summary(llm, raw_text[:85000])
+            summary = generate_summary(llm, raw_text[:100000])
 
         st.subheader("📑 Research Paper Summary")
         st.write(summary)
