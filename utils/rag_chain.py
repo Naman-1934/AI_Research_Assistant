@@ -137,29 +137,105 @@ Answer:
         )
 
 def generate_summary(llm, text):
+    """
+    Generate a structured summary of a research paper.
+    """
 
     prompt = f"""
-You are an expert research analyst.
+You are an expert Research Paper Analyzer.
 
-Create a detailed summary of the document.
+Your task is to read the given research paper and generate a well-structured summary.
 
-Include:
+Instructions:
 
-1. Title
-2. Objective
-3. Problem Statement
-4. Methodology
-5. Dataset
-6. Proposed Model
-7. Key Findings
-8. Results
-9. Advantages
-10. Limitations
-11. Future Scope
-12. Conclusion
+- Use ONLY the information present in the research paper.
+- Do NOT make assumptions.
+- If a section is missing, write:
+  "Not mentioned in the paper."
+- Keep the language simple, clear and professional.
+- Use headings and bullet points wherever appropriate.
 
-If any section is missing, write:
-"Not mentioned in the paper."
+Generate the summary in the following format:
+
+# 📄 Research Paper Summary
+
+## 1. Title
+Extract the title of the paper.
+
+---
+
+## 2. Authors
+Mention the author(s) if available.
+
+---
+
+## 3. Abstract
+Provide a concise summary of the abstract.
+
+---
+
+## 4. Problem Statement
+What problem does the paper aim to solve?
+
+---
+
+## 5. Research Objective
+What is the main objective of the research?
+
+---
+
+## 6. Methodology
+Explain the methodology used in the research.
+
+---
+
+## 7. Dataset
+Mention the dataset(s) used.
+
+---
+
+## 8. Proposed Model / Approach
+Describe the proposed method or model.
+
+---
+
+## 9. Experimental Setup
+Explain how the experiments were conducted.
+
+---
+
+## 10. Results
+Summarize the important experimental results.
+
+---
+
+## 11. Key Findings
+List the major findings.
+
+---
+
+## 12. Advantages
+Mention the advantages of the proposed work.
+
+---
+
+## 13. Limitations
+Mention all limitations discussed in the paper.
+
+---
+
+## 14. Future Scope
+Mention all future work suggested by the authors.
+
+---
+
+## 15. Conclusion
+Provide a concise conclusion.
+
+---
+
+## 16. Keywords
+Mention the keywords if available.
 
 Research Paper:
 
@@ -179,15 +255,13 @@ Summary:
         error = str(e)
 
         if "RESOURCE_EXHAUSTED" in error or "429" in error:
-
             return (
-                "⚠️ **AI Service Temporarily Unavailable**\n\n"
-                "The AI service has temporarily reached its usage limit.\n\n"
-                "Please try again after a few minutes.\n\n"
-                "Thank you for your patience."
+                "⚠️ AI Service Temporarily Unavailable.\n\n"
+                "The daily Gemini API quota has been reached.\n"
+                "Please try again later."
             )
 
         return (
-            "❌ Unable to generate the summary at the moment.\n"
-            "Please try again later."
+            "❌ Unable to generate the summary at this time.\n"
+            f"Error: {error}"
         )

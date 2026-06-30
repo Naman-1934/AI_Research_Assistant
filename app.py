@@ -52,9 +52,6 @@ chunks = []
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-if "vector_store" not in st.session_state:
-    st.session_state.vector_store = None
-
 if "faiss_index" not in st.session_state:
     st.session_state.faiss_index = None
 
@@ -152,8 +149,8 @@ for messages in st.session_state.messages:
 # ──────────────────────────────────────────────
 if "processed" not in st.session_state:
     st.session_state.processed = False
-if "processed_file" not in st.session_state:
-    st.session_state.processed_file = None
+if "processed_file_name" not in st.session_state:
+    st.session_state.processed_file_name = None
 
 uploaded_file = st.file_uploader(
     "📄 Upload Research Paper (PDF)", 
@@ -170,17 +167,15 @@ uploaded_file = st.file_uploader(
 # ──────────────────────────────────────────────
 if uploaded_file is not None:
 
-    st.session_state.processed = False
-    st.session_state.processed_file = None
-
+    
      # We check session_state to ensure we only process the file once.
-    if uploaded_file and not st.session_state.processed != uploaded_file.name:
+    if (not st.session_state.processed or st.session_state.get("Processed_file_name") != uploaded_file.name):
 
         with st.spinner("📄 Processing research paper..."):
             try:
 
                 # Step 1 — extract raw text from all uploaded PDFs
-                raw_text = extract_text_from_Pdfs(uploaded_file)
+                raw_text = extract_text_from_Pdfs([uploaded_file])
 
                 # ------------------------------------
                 # Validate uploaded document
@@ -223,10 +218,10 @@ if uploaded_file is not None:
 
                 st.session_state["faiss_index"] = faiss_index
                 st.session_state["chunks"] = chunks
-                st.session_state["vector_store"] = faiss_index
+                # st.session_state["vector_store"] = faiss_index
                 st.session_state["raw_text_for_summary"] = raw_text
 
-                st.session_state.raw_text_for_summary = raw_text
+                st.session_state["raw_text_for_summary"] = raw_text
 
                 # Mark this specific file as processed and save text for summary
                 st.session_state["processed"] = True
@@ -248,32 +243,26 @@ if uploaded_file is not None:
     # ─────────────────────────────────────────────────────────
     # 4. Display Status and Actions only after processing succeeds
     if st.session_state.processed:
-        st.success(f"✅ Active Document: {st.session_state.processed_file}")
+        st.success(f"✅ Active Document: {st.session_state["processed_file_name"]}")
     if st.button("📝 Generate Document Summary"):
-        if st.spinner("Generating summary..."):
+        # First 30,000 chars only — keeps us inside Gemini token limits
+        st.write("Here is the summary of the paper...")
+        raw_text = st.session_state.get("raw_text_for_summary")
 
-            with st.spinner("📝 Generate Research Paper Summary"):
-                # First 30,000 chars only — keeps us inside Gemini token limits
-                st.write("Here is the summary of the paper...")
+        if raw_text is None:
+            st.error("❌ Document text not found. Please try re-uploading your PDF to process it.")
+        else:   
+            with st.spinner("Generating summary..."):
+                summary = generate_summary(llm, raw_text)
+                st.session_state.generated_summary = summary
 
-                raw_text  = st.session_state.get("raw_text_for_summary")
-
-                if raw_text:
-                    with st.spinner("Generating summary..."):
-                        st.session_state.generated_summary = generate_summary(llm, st.session_state.raw_text[:85000])
-                else:
-                    st.error("❌ Document text not found. Please try re-uploading your PDF to process it.")
-
-            saved_summary = st.session_state.get("generated_summary")
-            if saved_summary is not None:
-                st.write("### Paper Summary")
-                st.write(saved_summary)
+            st.subheader("📑 Research Paper Summary")
+            st.write(summary)
 
             # FIX Bug 4: was mine="text/plain" — typo, silent failure
             # Corrected to mime="text/plain"
-            st.download_button(label=" Download Summary", data=st.session_state.generated_summary , file_name="summary.txt", mime="text/plain")
-        else:
-            st.error("Please upload and process a document first.")
+            st.download_button(label="Download Summary", data=summary, file_name="summary.txt", mime="text/plain")
+        
 
 # ──────────────────────────────────────────────
 # Process User Question
