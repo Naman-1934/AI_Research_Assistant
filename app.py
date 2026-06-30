@@ -166,60 +166,67 @@ uploaded_file = st.file_uploader(
 if uploaded_file is not None:
 
      # We check session_state to ensure we only process the file once.
-    if "processes_file_name" not in st.session_state or st.session_state.processed_file_name != uploaded_file.name:
+    if "processed_file_name" not in st.session_state or st.session_state.processed_file_name != uploaded_file.name:
 
         with st.spinner("📄 Processing research paper..."):
-            # Step 1 — extract raw text from all uploaded PDFs
-            raw_text = extract_text_from_Pdfs([uploaded_file])
+            try:
 
-            # ------------------------------------
-            # Validate uploaded document
-            # ------------------------------------
-            is_valid, validatation_message = is_research_paper(raw_text)
+                # Step 1 — extract raw text from all uploaded PDFs
+                raw_text = extract_text_from_Pdfs([uploaded_file])
 
-            if not is_valid:
-                st.error("❌ Unsupported Document")
-                st.warning(validatation_message)
-                st.info(
+                # ------------------------------------
+                # Validate uploaded document
+                # ------------------------------------
+                is_valid, validatation_message = is_research_paper(raw_text)
+
+                if not is_valid:
+                    st.error("❌ Unsupported Document")
+                    st.warning(validatation_message)
+                    st.info(
+                        """
+                    This application only supports academic research papers.
+
+                    Supported:
+                    IEEE Papers,
+                    Springer Papers,
+                    Elsevier Papers,
+                    ACM Papers,
+                    University Research Papers,
+
+                    Unsupported:
+                    Question Papers,
+                    Exam Papers,
+                    News Articles,
+                    Resume/CV,
+                    Bills,
+                    Certificates
                     """
-                This application only supports academic research papers.
+                    )
+                    st.stop()
 
-                Supported:
-                IEEE Papers,
-                Springer Papers,
-                Elsevier Papers,
-                ACM Papers,
-                University Research Papers,
+                # Step 2 — split into 1000-char chunks with 200-char overlap
+                chunks = split_text(raw_text)
 
-                Unsupported:
-                Question Papers,
-                Exam Papers,
-                News Articles,
-                Resume/CV,
-                Bills,
-                Certificates
-                """
-                )
-                st.stop()
+                # Step 3 — embed all chunks and build FAISS index
+                faiss_index, embeddings = create_faiss_index(chunks, embedding_model)
 
-            # Step 2 — split into 1000-char chunks with 200-char overlap
-            chunks = split_text(raw_text)
+                # Step 4 — save index + chunks to disk so they survive app restarts
+                save_vector_store(faiss_index, chunks)
 
-            # Step 3 — embed all chunks and build FAISS index
-            faiss_index, embeddings = create_faiss_index(chunks, embedding_model)
+                st.session_state.faiss_index = faiss_index
+                st.session_state.chunks = chunks
+                st.session_state.vector_store = faiss_index
 
-            # Step 4 — save index + chunks to disk so they survive app restarts
-            save_vector_store(faiss_index, chunks)
+                # Mark this specific file as processed and save text for summary
+                st.session_state.processed_file_name = uploaded_file.name
+                st.session_state.raw_text_for_summary = raw_text
 
-            st.session_state.faiss_index = faiss_index
-            st.session_state.chunks = chunks
-            st.session_state.vector_store = faiss_index
+                st.success("✅ Research paper processed successfully.")
 
-            # Mark this specific file as processed and save text for summary
-            st.session_state.processed_file_name = uploaded_file.name
-            st.session_state.raw_text_for_summary = raw_text
-
-        st.success("✅ Research paper processed successfully.")
+            except Exception as e:
+                st.error("❌ An error occurred during processing:")
+                st.exception(e)
+    
 
 
     # ── SUMMARY SECTION ──────────────────────────────────────
