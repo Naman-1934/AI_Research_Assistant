@@ -35,7 +35,7 @@ def validate_question(question):
     if question is None:
         return False
     
-    if len(question.strip()) == "":
+    if len(question.strip()) == 0:
         st.warning(
             "Please enter a valid question"
         )

@@ -55,6 +55,15 @@ if "messages" not in st.session_state:
 if "vector_store" not in st.session_state:
     st.session_state.vector_store = None
 
+if "faiss_index" not in st.session_state:
+    st.session_state.faiss_index = None
+
+if "chunks" not in st.session_state:
+    st.session_state.chunks = []
+
+if "uploader_reset" not in st.session_state:
+    st.session_state.uploader_reset = 0
+
 # ──────────────────────────────────────────────
 # SIDEBAR
 # New Chat
@@ -70,6 +79,12 @@ with st.sidebar:
             shutil.rmtree("vector_db")
 
         st.session_state.vector_store = None
+
+        st.session_state.faiss_index = None
+
+        st.session_state.chunks = []
+
+        st.session_state.uploader_reset += 1
 
         st.success("Started a new conversation.")
         st.rerun()
@@ -90,9 +105,9 @@ with st.sidebar:
 if st.button("Reset Project"):
     st.session_state.messages = []
     st.session_state.vector_store = None
-    index = None
-
-    chunks = []
+    st.session_state.faiss_index = None
+    st.session_state.chunks = []
+    st.session_state.uploader_reset += 1
 
     # Delete saved FAISS files
     if os.path.exists("vector_db"):
@@ -135,7 +150,13 @@ for messages in st.session_state.messages:
 # ──────────────────────────────────────────────
 # PDF UPLOAD
 # ──────────────────────────────────────────────
-uploaded_file = st.file_uploader("📄 Upload Research Paper (PDF)", type="pdf", accept_multiple_files=False, help="Upload one research paper in PDF format.")
+uploaded_file = st.file_uploader(
+    "📄 Upload Research Paper (PDF)", 
+    type="pdf",
+    accept_multiple_files=False, 
+    help="Upload one research paper in PDF format.",
+    key = f"uploader_{st.session_state.uploader_reset}"
+    )
 
 if uploaded_file is not None:
     st.info(f"📄 Selected File: {uploaded_file.name} ")
@@ -194,11 +215,13 @@ if process_pdf:
         chunks = split_text(raw_text)
 
         # Step 3 — embed all chunks and build FAISS index
-        index, vector_store = create_faiss_index(chunks, embedding_model)
+        faiss_index, embeddings = create_faiss_index(chunks, embedding_model)
 
         # Step 4 — save index + chunks to disk so they survive app restarts
-        save_vector_store(index, chunks)
+        save_vector_store(faiss_index, chunks)
 
+        st.session_state.faiss_index = faiss_index
+        st.session_state.chunks = chunks
         st.session_state.vector_store = index
 
         st.success("✅ Research paper processed successfully.")
@@ -250,6 +273,8 @@ if (validate_question(user_question) and validate_vector_store(st.session_state.
             # Chapter 1: Objective of Research, Chapter 2: Methodology, Chapter 3:Results,
             # Question: "What is the objective?" and Retriever returns:
             # [ "The objective of this research is..."]
+                faiss_index = st.session_state.faiss_index
+                chunks = st.session_state.chunks
                 relevant_results = retrieve_relevant_chunks(index, chunks, user_question, top_k=5)
 
                 if not relevant_results:
